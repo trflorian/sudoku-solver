@@ -1,4 +1,4 @@
-import cv2
+import cv2.cv2 as cv2
 import numpy as np
 import pytesseract
 
@@ -10,10 +10,10 @@ def find_sudoku_contour(img):
 
     # find contours and their areas
     contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    contourAreas = [cv2.contourArea(c) for c in contours]
-    contourMax = contours[np.argmax(contourAreas)]
+    contour_areas = [cv2.contourArea(c) for c in contours]
+    contour_max = contours[np.argmax(contour_areas)]
 
-    return contourMax
+    return contour_max
 
 
 def crop_to_contour(img, contour, dst_size):
@@ -36,7 +36,9 @@ def crop_to_contour(img, contour, dst_size):
     approximations = cv2.approxPolyDP(contour, epsilon, True)
     # subtract crop region
     approximations -= np.flip(crop_start)
-    poly = cv2.polylines(out_cropped, [approximations], True, color=(255, 0, 0), thickness=1)
+
+    # debug visualization
+    # poly = cv2.polylines(out_cropped, [approximations], True, color=(255, 0, 0), thickness=1)
     # cv2.imshow("cropped", poly)
 
     # find homography
@@ -59,8 +61,7 @@ def extract_digits(img):
     numbers = np.zeros([9, 9])
     for row in range(9):
         for col in range(9):
-            box = sudoku_rgb[row * box_s + 8:(row + 1) * box_s - 2,
-                  col * box_s + 10:(col + 1) * box_s - 5]
+            box = sudoku_rgb[row * box_s + 8:(row + 1) * box_s - 2, col * box_s + 10:(col + 1) * box_s - 5]
             text = pytesseract.image_to_string(box, config='--psm 10')
             if len(text) > 0 and text[0].isdigit():
                 numbers[row, col] = int(text[0])
@@ -69,3 +70,26 @@ def extract_digits(img):
                 print(f'no number found ({text})')
 
     return numbers
+
+
+def sudoku_image(img, size):
+    # we work with grayscale image
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # extract sudoku contour
+    contour = find_sudoku_contour(gray)
+
+    # crop to found contour
+    cropped = crop_to_contour(gray, contour, size)
+
+    return cropped
+
+
+def digits_from_sudoku_image(img, sudoku_grid_size=400):
+    # crop to found contour
+    cropped = cv2.resize(img, (sudoku_grid_size, sudoku_grid_size))
+
+    # find digits
+    digits = extract_digits(cropped)
+
+    return digits
