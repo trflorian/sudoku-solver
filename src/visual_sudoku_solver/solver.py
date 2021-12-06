@@ -14,8 +14,8 @@ def solve(digits):
     return check_sudoku(digits), digits
 
 
-def check_sudoku_1to9(digits):
-    non_1to9 = (digits < 0) & (digits > 9)
+def check_sudoku_0to9(digits):
+    non_1to9 = (digits < 0) | (digits > 9)
     return np.sum(non_1to9) == 0
 
 
@@ -28,7 +28,7 @@ def check_sudoku_unique(array):
 
 def check_sudoku(digits):
     # check that only digits 1 to 9 are present
-    if not check_sudoku_1to9(digits):
+    if not check_sudoku_0to9(digits):
         return False
 
     # check rows
