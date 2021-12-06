@@ -34,7 +34,7 @@ def check_sudoku_0to9(digits):
     return np.sum(non_1to9) == 0
 
 
-def check_sudoku_unique(digits):
+def check_sudoku_unique_0to9(digits):
     digits = to_digits(digits)
 
     # count non unique entries
@@ -52,18 +52,18 @@ def check_sudoku(digits):
 
     # check rows
     for row in digits:
-        if not check_sudoku_unique(row):
+        if not check_sudoku_unique_0to9(row):
             return False
 
     # check columns
     for col in digits.T:
-        if not check_sudoku_unique(col):
+        if not check_sudoku_unique_0to9(col):
             return False
 
     # check boxes
     for br in range(3):
         for bc in range(3):
-            if not check_sudoku_unique(digits[3*br:3*(br+1), 3*bc:3*(bc+1)]):
+            if not check_sudoku_unique_0to9(digits[3*br:3*(br+1), 3*bc:3*(bc+1)]):
                 return False
 
     return True

@@ -27,3 +27,15 @@ def test_1to9_range(start, end, expected):
 def test_1to9_characters(char):
     with pytest.raises(ValueError):
         assert not solver.check_sudoku_0to9(char)
+
+
+def test_unique_0to9():
+    assert solver.check_sudoku_unique_0to9(range(0, 9))
+
+
+def test_unique_multi0():
+    assert solver.check_sudoku_unique_0to9([0, 0, 0, 0, 1, 4, 9])
+
+
+def test_unique_multi1to9_fail():
+    assert not solver.check_sudoku_unique_0to9([1, 1])
