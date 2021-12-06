@@ -1,4 +1,4 @@
-from visual_sudoku_solver import solver
+from src.visual_sudoku_solver import solver
 
 import numpy as np
 
