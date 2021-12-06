@@ -2,9 +2,6 @@ import cv2
 import numpy as np
 import pytesseract
 
-# for digit extraction
-SUDOKU_GIRD_SIZE = 400
-
 
 def find_sudoku_contour(img):
     # apply blur filtering and 01 thresholding
@@ -72,22 +69,3 @@ def extract_digits(img):
                 print(f'no number found ({text})')
 
     return numbers
-
-
-def sudoku_image(img, size, dig=True):
-    # we work with grayscale image
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    # extract sudoku contour
-    contour = find_sudoku_contour(gray)
-
-    # crop to found contour
-    cropped = crop_to_contour(gray, contour, SUDOKU_GIRD_SIZE)
-
-    # digits
-    digits = None
-    if dig:
-        # find digits
-        digits = extract_digits(cropped)
-
-    return digits, cv2.resize(cropped, (size, size))
