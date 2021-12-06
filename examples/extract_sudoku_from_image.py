@@ -1,6 +1,6 @@
 import numpy as np
 
-from src.visual_sudoku_solver import extractor
+from visual_sudoku_solver import extractor
 import cv2.cv2 as cv2
 
 # load sudoku image
