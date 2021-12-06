@@ -16,5 +16,14 @@ import numpy as np
 ])
 def test_1to9_range(start, end, expected):
     # end is inclusive
-    range_array = np.array(range(start, end+1))
+    range_array = range(start, end+1)
     assert solver.check_sudoku_0to9(range_array) == expected
+
+
+@pytest.mark.parametrize("char", [
+    'a', 'b', 'c',
+    '#', '|', '@',
+])
+def test_1to9_characters(char):
+    with pytest.raises(ValueError):
+        assert not solver.check_sudoku_0to9(char)

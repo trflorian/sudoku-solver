@@ -1,7 +1,20 @@
 import numpy as np
 
 
+def to_digits(digits):
+    """Convert any digits array to a usable np array of integer datatype"""
+    if digits is np.array:
+        if digits.dtype == int:
+            # if already correctly configured just return
+            return digits
+        # if already np.array convert to integer
+        return digits.astype(int)
+    return np.array(digits, dtype=int)
+
+
 def solve(digits):
+    digits = to_digits(digits)
+
     for p, d in np.ndenumerate(digits):
         if d == 0:
             for i in range(1, 9):
@@ -15,18 +28,24 @@ def solve(digits):
 
 
 def check_sudoku_0to9(digits):
+    digits = to_digits(digits)
+
     non_1to9 = (digits < 0) | (digits > 9)
     return np.sum(non_1to9) == 0
 
 
-def check_sudoku_unique(array):
+def check_sudoku_unique(digits):
+    digits = to_digits(digits)
+
     # count non unique entries
-    u, c = np.unique(array, return_counts=True)
+    u, c = np.unique(digits, return_counts=True)
     dup = u[(c > 1) & (u > 0)]
     return len(dup) == 0
 
 
 def check_sudoku(digits):
+    digits = to_digits(digits)
+
     # check that only digits 1 to 9 are present
     if not check_sudoku_0to9(digits):
         return False
