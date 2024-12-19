@@ -1,7 +1,9 @@
 from pathlib import Path
 import cv2
 import numpy as np
+import torch
 
+from model import DigitClassifier
 
 def run_sudoku_detection(img: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     img_annotated = img.copy()
@@ -117,6 +119,8 @@ def run_sudoku_detection(img: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.nd
     # convert to BGR
     composite = cv2.cvtColor(composite, cv2.COLOR_GRAY2BGR)
 
+    model = DigitClassifier.load_from_checkpoint("model.ckpt")
+
     # fill empty cells with red
     for i, row in enumerate(is_cell_empty):
         for j, is_empty in enumerate(row):
@@ -130,7 +134,12 @@ def run_sudoku_detection(img: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.nd
                 )
             else:
                 # detect digit
-                digit = ""
+                cell_img = torch.tensor(cells[i][j] / 255, dtype=torch.float32)
+                # replicate 3 channels
+                cell_img = cell_img.repeat(3, 1, 1)
+                out = model(cell_img.unsqueeze(0))
+                digit = torch.argmax(out, dim=1).item()
+                digit = f"{digit}"
                 cv2.putText(
                     composite,
                     digit,
