@@ -1,9 +1,9 @@
+from pathlib import Path
 import cv2
 import numpy as np
 
-def main():
-    img = cv2.imread("images/sudoku.jpg")
-    
+
+def run_sudoku_detection(img: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     img_annotated = img.copy()
 
     # apply hough transform
@@ -32,7 +32,7 @@ def main():
 
     # Extract the coordinates of the contour
     pts = approx.reshape(4, 2)
-    
+
     # order them from top-left, top-right, bottom-right, bottom-left
     rect = np.zeros((4, 2), dtype="float32")
 
@@ -60,12 +60,10 @@ def main():
     maxHeight = max(int(heightA), int(heightB))
 
     # Define the destination points for the top-down view
-    dst = np.array([
-        [0, 0],
-        [maxWidth - 1, 0],
-        [maxWidth - 1, maxHeight - 1],
-        [0, maxHeight - 1]
-    ], dtype="float32")
+    dst = np.array(
+        [[0, 0], [maxWidth - 1, 0], [maxWidth - 1, maxHeight - 1], [0, maxHeight - 1]],
+        dtype="float32",
+    )
 
     # Compute the perspective transform matrix and then apply it
     M = cv2.getPerspectiveTransform(rect, dst)
@@ -80,7 +78,9 @@ def main():
 
     cell_size = 50
     border = 5
-    sudoku_grid = cv2.resize(warped, (9 * (cell_size + 2 * border), 9 * (cell_size + 2 * border)))
+    sudoku_grid = cv2.resize(
+        warped, (9 * (cell_size + 2 * border), 9 * (cell_size + 2 * border))
+    )
 
     cells = [np.vsplit(row, 9) for row in np.hsplit(sudoku_grid, 9)]
 
@@ -91,11 +91,22 @@ def main():
     # cells = [[cv2.threshold(cell, 80, 255, cv2.THRESH_BINARY_INV)[1] for cell in row] for row in cells]
 
     # use adaptive thresholding
-    cells = [[cv2.adaptiveThreshold(cell, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 15, 20) for cell in row] for row in cells]
+    cells = [
+        [
+            cv2.adaptiveThreshold(
+                cell, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 15, 20
+            )
+            for cell in row
+        ]
+        for row in cells
+    ]
 
     # apply morphology opening
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    cells = [[cv2.morphologyEx(cell, cv2.MORPH_OPEN, kernel) for cell in row] for row in cells]
+    cells = [
+        [cv2.morphologyEx(cell, cv2.MORPH_OPEN, kernel) for cell in row]
+        for row in cells
+    ]
 
     # find empty cells
     is_cell_empty = [[np.mean(cell) < 10 for cell in row] for row in cells]
@@ -110,18 +121,40 @@ def main():
     for i, row in enumerate(is_cell_empty):
         for j, is_empty in enumerate(row):
             if is_empty:
-                cv2.rectangle(composite, (i * cell_size, j * cell_size), ((i + 1) * cell_size, (j + 1) * cell_size), (0, 0, 255), -1)
+                cv2.rectangle(
+                    composite,
+                    (i * cell_size, j * cell_size),
+                    ((i + 1) * cell_size, (j + 1) * cell_size),
+                    (0, 0, 255),
+                    -1,
+                )
             else:
                 # detect digit
-                digit = "9"
-                cv2.putText(composite, digit, (i * cell_size + 10, j * cell_size + 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                digit = ""
+                cv2.putText(
+                    composite,
+                    digit,
+                    (i * cell_size + 10, j * cell_size + 30),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    (0, 255, 0),
+                    2,
+                )
+    
+    return img_annotated, warped, composite
 
 
-    cv2.imshow("Warped", warped)
-    cv2.imshow("Image", img_annotated)
-    cv2.imshow("Cells", composite)
+def main():
+    for img_path in Path("images").glob("*.jpg"):
+        img = cv2.imread(str(img_path))
 
-    cv2.waitKey(0)
+        img_annotated, warped, composite = run_sudoku_detection(img)
+
+        cv2.imshow("Warped", warped)
+        cv2.imshow("Image", img_annotated)
+        cv2.imshow("Cells", composite)
+
+        cv2.waitKey(0)
 
     cv2.destroyAllWindows()
 
