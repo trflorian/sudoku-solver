@@ -4,4 +4,7 @@ version = "0.1.0"
 description = "Detect a sudoku grid in an image and solve it"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "opencv-python>=4.10.0.84",
+    "pytesseract>=0.3.13",
+]
