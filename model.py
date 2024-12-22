@@ -38,7 +38,7 @@ class DigitClassifier(L.LightningModule):
 
         # Loss
         loss = self.loss(y_hat, y)
-        self.log("train/loss", loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("train/loss", loss, on_step=True, on_epoch=False, prog_bar=True)
 
         # Metrics
         self.train_metrics(y_hat, y)
@@ -61,4 +61,4 @@ class DigitClassifier(L.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        return torch.optim.AdamW(self.parameters(), lr=1e-2)
+        return torch.optim.AdamW(self.parameters(), lr=1e-3)

@@ -1,9 +1,15 @@
 from pathlib import Path
 import cv2
 import numpy as np
+
+from PIL import Image
+
 import torch
+from torchvision.transforms import v2 as T
+from torchvision.transforms.functional import InterpolationMode
 
 from model import DigitClassifier
+
 
 def run_sudoku_detection(img: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     img_annotated = img.copy()
@@ -78,8 +84,8 @@ def run_sudoku_detection(img: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.nd
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     warped = clahe.apply(gray_warped)
 
-    cell_size = 50
-    border = 5
+    cell_size = 80
+    border = 10
     sudoku_grid = cv2.resize(
         warped, (9 * (cell_size + 2 * border), 9 * (cell_size + 2 * border))
     )
@@ -95,18 +101,23 @@ def run_sudoku_detection(img: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.nd
     # use adaptive thresholding
     cells = [
         [
-            cv2.adaptiveThreshold(
-                cell, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 15, 20
-            )
+            # cv2.adaptiveThreshold(
+            #     cell, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, blockSize=21, C=20
+            # )
+            cv2.threshold(cell, 80, 255, cv2.THRESH_BINARY_INV)[1]
             for cell in row
         ]
         for row in cells
     ]
 
     # apply morphology opening
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
     cells = [
         [cv2.morphologyEx(cell, cv2.MORPH_OPEN, kernel) for cell in row]
+        for row in cells
+    ]
+    cells = [
+        [cv2.morphologyEx(cell, cv2.MORPH_DILATE, kernel) for cell in row]
         for row in cells
     ]
 
@@ -119,7 +130,18 @@ def run_sudoku_detection(img: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.nd
     # convert to BGR
     composite = cv2.cvtColor(composite, cv2.COLOR_GRAY2BGR)
 
-    model = DigitClassifier.load_from_checkpoint("model.ckpt")
+    model = DigitClassifier.load_from_checkpoint("model.ckpt", map_location="cuda")
+    model.eval()
+
+    preproces_transform = T.Compose(
+        [
+            T.Resize((28, 28)), #, interpolation=InterpolationMode.NEAREST),
+            T.ToImage(),
+            T.ToDtype(torch.float32, scale=True),
+            T.Normalize((0.1307,), (0.3081,)),
+            T.Lambda(lambda x: x.repeat(3, 1, 1)),
+        ]
+    )
 
     # fill empty cells with red
     for i, row in enumerate(is_cell_empty):
@@ -134,27 +156,55 @@ def run_sudoku_detection(img: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.nd
                 )
             else:
                 # detect digit
-                cell_img = torch.tensor(cells[i][j] / 255, dtype=torch.float32)
-                # replicate 3 channels
-                cell_img = cell_img.repeat(3, 1, 1)
-                out = model(cell_img.unsqueeze(0))
+                cell_img = Image.fromarray(cells[i][j])
+                cell_img = preproces_transform(cell_img)
+                cell_img = cell_img.unsqueeze(0).cuda()
+                out = model(cell_img)
+
+                cell_img= cells[i][j].copy()
+                cell_img = cv2.cvtColor(cell_img, cv2.COLOR_GRAY2BGR)
+                cell_img = cv2.resize(cell_img, (512, 512), interpolation=cv2.INTER_NEAREST)
+
+                score = torch.nn.functional.softmax(out, dim=1)
+                cv2.putText(
+                    cell_img,
+                    f"Predictions: {[round(float(s), 2) for s in score[0]]}",
+                    (5, 20),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.3,
+                    (0, 255, 0),
+                    1,
+                )
+                cv2.putText(
+                    cell_img,
+                    f"Predicted: {torch.argmax(out, dim=1).item()}",
+                    (5, 40),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.3,
+                    (0, 255, 0),
+                    1,
+                )
+                cv2.imshow("Cell", cell_img)
+                cv2.waitKey(0)
+
+
                 digit = torch.argmax(out, dim=1).item()
                 digit = f"{digit}"
                 cv2.putText(
                     composite,
                     digit,
-                    (i * cell_size + 10, j * cell_size + 30),
+                    (i * cell_size + 5, j * cell_size + 20),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
+                    0.5,
                     (0, 255, 0),
-                    2,
+                    1,
                 )
-    
+
     return img_annotated, warped, composite
 
 
 def main():
-    for img_path in Path("images").glob("*.jpg"):
+    for img_path in sorted(Path("images").glob("*.jpg"))[:1]:
         img = cv2.imread(str(img_path))
 
         img_annotated, warped, composite = run_sudoku_detection(img)
